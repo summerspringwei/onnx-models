@@ -13,7 +13,7 @@ import os
 # for 8 transformer architectures and 30 pretrained weights.
 #          Model          | Tokenizer          | Pretrained weights shortcut          | save_name
 MODELS = [
-    (GPT2Model, GPT2Tokenizer, 'gpt2', 'gpt2'),
+    (GPT2Model, GPT2Tokenizer, 'gpt2-large', 'gpt2-large'),
     (GPT2LMHeadModel, GPT2Tokenizer, 'gpt2', 'gpt2-lm-head'),
 ]
 data_dir = 'test_data_set_0'
@@ -86,15 +86,17 @@ def save_model(name, model, inputs, outputs, input_names=None, output_names=None
         torch.onnx._export(model, inputs, model_dir, verbose=True, input_names=input_names,
                            output_names=output_names, example_outputs=outputs, **kwargs)
     else:
+        # torch.onnx.export(model, inputs, model_dir, verbose=True, input_names=input_names,
+        #                   output_names=output_names, example_outputs=outputs, **kwargs)
         torch.onnx.export(model, inputs, model_dir, verbose=True, input_names=input_names,
-                          output_names=output_names, example_outputs=outputs, **kwargs)
+                          output_names=output_names, **kwargs)
 
     test_data_dir = os.path.join(dir, data_dir)
     if not os.path.exists(test_data_dir):
         os.makedirs(test_data_dir)
 
-    save_data(test_data_dir, "input", input_names, inputs_flatten)
-    save_data(test_data_dir, "output", output_names, outputs_flatten)
+    # save_data(test_data_dir, "input", input_names, inputs_flatten)
+    # save_data(test_data_dir, "output", output_names, outputs_flatten)
 
     return model_dir, test_data_dir
 
@@ -129,15 +131,16 @@ def gpt2_test():
         # Encode text
         # Add special tokens takes care of adding [CLS], [SEP], <s>... tokens in the right way for each model.
         input_ids_1 = torch.tensor(
-            [[tokenizer.encode("Here is some text to encode Hello World", add_special_tokens=True)]])
+            [[tokenizer.encode("Here is some text to encode Hello World"*48, add_special_tokens=True)]])
         with torch.no_grad():
             output_1 = model(input_ids_1)  # Models outputs are now tuples
-
+        print(input_ids_1.shape)
         model_dir, data_dir = save_model(save_name, model.cpu(), input_ids_1, output_1,
                                          opset_version=10,
                                          input_names=['input1'],
-                                         dynamic_axes={'input1': [0, 1, 2, 3]})
-
+                                         dynamic_axes={'input1': [0, 1]}
+                                         )
+        return 
         # Test exported model with TensorProto data saved in files
         inputs_flatten = flatten(input_ids_1)
         inputs_flatten = update_flatten_list(inputs_flatten, [])
